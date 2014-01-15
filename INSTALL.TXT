@@ -1,0 +1,5 @@
+1. Install Ghostscript
+2. Install PHP Imagick
+3. Install Module in Drupal
+4. goto admin/settings/previews
+5. Run cron

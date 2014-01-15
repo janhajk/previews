@@ -1,0 +1,72 @@
+#previews_docviewer_overlay {
+  display:none;
+  position: fixed;
+  z-index: 100;
+  top: 0px;
+  left: 0px;
+  height: 100%;
+  width: 100%;
+  background-color: #000;
+  -moz-opacity: 0.75;
+  opacity: 0.75;
+}
+
+#previews_docviewer_container {
+    background-color:#111;
+    opacity:0;
+    filter:alpha(opacity=0);
+    left:-9999em; /* show, but not in visible area */
+    z-index:101;
+    text-align:center;
+    padding-top:10px;
+    position:fixed;
+    top:50%;
+    left:50%;
+}
+
+#previews_docviewer_toolbar {
+  position:relative;  
+  background-color:#111;
+  height:auto;
+  text-align:left;
+  padding-left:15px;
+  color:#FFF;
+}
+
+#previews_images_close {
+  float:right;
+  margin:5px 10px 0px 0px;
+  background-image: url(images/close.gif);
+  width:15px;
+  height:15px;
+}
+
+#previews_docviewer_toolbar a:link, a:visited, a:hover {
+    color:#FFF;
+}
+
+/* Loading Animation */
+#previews_images_loading {
+  position:absolute;
+}
+
+/* */
+#previews_images_mag {
+  width:18px;
+  height:18px;
+  float:right;
+  margin-right:5px;
+  margin-top:4px;
+  background-image: url(images/enlarge.png);
+}
+
+.previews_fieldset {
+  clear:both;
+}
+
+/* One Thumbnail div */
+.previews_thumb {
+  float:left;
+  margin:3px;
+  border: 1px solid #dcdcdc;
+}

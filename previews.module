@@ -1,0 +1,194 @@
+<?php
+include_once('convert.inc');
+include_once('functions.inc');
+include_once('content.inc');
+
+function previews_menu() {
+  $items = array();
+
+  // Admin settings for previews
+  $items['admin/settings/previews'] = array(
+    'title' => 'Previews',
+    'description' => t('Settings for Preivews'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('previews_admin_settings'),
+    'access callback' => 'user_access',
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'previews.admin.inc',
+  );
+  // Admin settings for previews
+  $items['admin/settings/previews/cacheflush'] = array(
+    'title' => 'Flush Thumbnail Cache',
+    'page callback' => 'previews_CacheFlush',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'previews.admin.inc',
+  );
+  // Rebuild Thumbnail Cache
+  $items['admin/settings/previews/rebuildcache'] = array(
+    'title' => 'Rebuild Thumbnail Cache',
+    'page callback' => 'previews_RebuildCache',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'previews.admin.inc',
+  );
+  $items['previews/rebuildcache/%'] = array(
+    'title'            => 'Rebuild Thumbnail Cache',
+    'page callback'    => 'previews_RebuildCacheNode',
+    'page arguments'   => array(2),
+    'access callback'  => 'user_access',
+    'access arguments' => array('access content'),
+    'type'             => MENU_CALLBACK,
+    'file'             => 'previews.admin.inc',
+  );
+
+  // Test Page to just run this one cron
+  $items['previews/cron'] = array(
+	'title' => 'test',
+	'page callback' => 'previews_cron', 
+	'access callback' => 'user_access', 
+	'access arguments' => array('administer site configuration'),
+	'type' => MENU_CALLBACK,
+	);
+  
+  return $items;
+}
+
+/**
+ * Implementation of hook_theme()
+ */
+function previews_theme($existing, $type, $theme, $path) {
+  return array(
+      'previews_fieldset' => array(
+        'arguments' => array(
+            'node'   => null,
+            'thumbs' => null,
+        ),
+        'file' => 'theme.inc',
+      ),
+      'previews_thumbnail' => array(
+          'arguments' => array(
+              'thumbpath' => null,
+              'fid'       => null,
+              'filepath'  => null,
+          ),
+          'file' => 'theme.inc',
+      ),
+      'previews_thumbnail_group' => array(
+          'arguments' => array(
+              'thumbs' => null,
+              'fid'    => null,
+          ),
+          'file' => 'theme.inc',
+      ),
+      'previews_imgURI' => array(
+          'arguments' => array(
+              'path' => null,
+          ),
+          'file' => 'theme.inc',
+      ),
+  );
+}
+
+/**
+ * implementation of hook_file_download
+ */
+function previews_file_download($filepath) {
+  // check $filepath agains previews-File, exp: previews/screen/123-002.jpg
+	if (preg_match('|previews/.*/(\d+)[^\d].*([a-z]{3})|U',$filepath,$match)) {
+    $fid = $match[1];
+    $mime = ($match[2] == 'png')?'png':'jpeg';
+		$nid = _previews_fid2nid($fid);
+	    if (node_access('view',node_load($nid))) {
+	      return array(
+            'Content-type: image/'.$mime,
+            'Expires: '.gmdate(DATE_RFC1123, REQUEST_TIME + 1209600),
+            'Cache-Control: max-age=1209600, private, must-revalidate');
+	    }
+	    else {
+	      return -1;
+	    }
+	}
+	
+}
+
+/**
+ * implementation of hook_nodeapi
+ */
+function previews_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+  if ($op == 'view' && count(_previews_getFilefields($node->type))) {
+      $node->content['preview'] = array(
+        '#value' => _previews_getcontent($node),
+        '#weight' => 10,
+      );
+      // javascript variables
+      $settings = array('previews'=>array(
+            'images' => array(
+                'path'      => url(drupal_get_path('module', 'previews')),
+                'filespath' => file_create_url('previews/'),
+            )
+        ));
+      drupal_add_js($settings, 'setting');
+      drupal_add_js (drupal_get_path('module', 'previews') . '/docviewer.js',  'module', 'footer');
+      drupal_add_css(drupal_get_path('module', 'previews') . '/docviewer.css', 'module');
+  }
+}
+
+/**
+ * implementation of hook_cron
+ * TODO: 
+ * 		delete the previews, that do no longer exist
+ *		only update the files, that don't exist yet
+ *    only take files that belong to a existing node (doesn't take files that
+ *    are beeing uploaded)
+ */
+function previews_cron() {
+  if (_previews_isStillRunning()) return false;
+  _previews_updateTable();
+
+  // Read certain amount of Files and convert them to Image
+  $fids = _previews_getFilesToConvert();
+  if (!count($fids)) return false; // Only perform if there's files left to convert
+  
+  _previews_CreateFolderTree(); // Create Previews Files Folder Tree
+  
+  $previewsPath = file_directory_path().'/previews';
+
+  // Convert the Selected Files
+  foreach ($fids as $file) {
+    $ext = strtolower(array_pop(explode('.',$file['filepath'])));
+    // PDFs
+    if ($ext == 'pdf') {
+      $pageNum = _previews_convertPdf($file);
+    }
+    // Images
+    if ($ext == 'jpg' || $ext == 'jpeg' || $ext == 'png') {
+      $filename = $file['fid'].'-001.jpg';
+      // copy images directly to raw folder
+      copy($file['filepath'], $previewsPath.'/raw/'.$filename); // {Copy overwrites any existing file}
+      $r = _previews_ImageScale($filename, 'thumbnail');
+      $r = _previews_ImageScale($filename, 'medium');
+      $r = _previews_ImageScale($filename, 'screen');
+    //$r = _previews_ImageScale($filename, 'big');
+      _previews_removeRaw($filename);
+      // Images are always just one page
+      $pageNum = 1;
+    }
+
+    // Update DB and Log
+    if($pageNum) {
+      db_query("UPDATE {previews} SET preview = '".$file['timestamp']."', pages = '".$pageNum."' WHERE fid = ".$file['fid']);
+    }
+    // No Preview was/could be made (filesize to big, incorrect pdf format)
+    // preview gets a 1 instead of timestamp
+    else {
+      db_query("UPDATE {previews} SET preview = 1 WHERE fid = ".$file['fid']);
+    }
+  }
+
+  return true;
+}
+

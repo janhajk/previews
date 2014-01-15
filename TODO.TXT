@@ -1,0 +1,6 @@
+TODO
+
+- Possiblity to regulate Cron via a custom Cron-Makro in Admin
+- set Path to Ghostscript in Admin if not "gs"
+- Debug mode
+- Checkbox for watchdog output or not in Admin

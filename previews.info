@@ -1,0 +1,5 @@
+;$Id: 
+name = Previews
+description = Shows Previews of Files as Images
+package = Custom
+core = 6.x
