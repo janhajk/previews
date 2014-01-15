@@ -159,7 +159,7 @@ function previews_cron() {
 
   // Convert the Selected Files
   foreach ($fids as $file) {
-    $ext = strtolower(array_pop(explode('.',$file['filepath'])));
+    $ext = strtolower(pathinfo($file['filepath'], PATHINFO_EXTENSION));
     // PDFs
     if ($ext == 'pdf') {
       $pageNum = _previews_convertPdf($file);

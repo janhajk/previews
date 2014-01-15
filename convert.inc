@@ -91,7 +91,7 @@ function _previews_ImageScale($filename, $type) {
   $path = file_directory_path().'/previews';
 
   // File-Extension jpg or png
-  $ext = strtolower(array_pop(explode('.',$filename)));
+  $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
   
   $src = $path.'/raw/'.$filename;
   // Check if raw-File exist
@@ -126,6 +126,10 @@ function _previews_ImageScale($filename, $type) {
 
   $outputFileName = $path.'/'.$folder.'/'.str_replace('.'.$ext,'.'.$new_ext,$filename);
   list($width, $height, , ) = getimagesize($src);
+
+  if($width*$height > 65571200) {
+    return $outputFileName;
+  }
   
   // Delete any old Files -> overwrite
   if (file_exists($outputFileName)) unlink ($outputFileName);

@@ -58,7 +58,7 @@ function theme_previews_thumbnail($thumbpath,$fid,$filepath) {
   $img  = theme('image',
                 _previews_dataUriSupport() ? theme('previews_imgURI', $thumbpath) : file_create_url($thumbpath),
                 '',
-                array_pop(explode('/',$filepath)),
+                basename($filepath),
                 array(
                      'width' => '60px',
                      'height'=> '60px',
@@ -68,10 +68,10 @@ function theme_previews_thumbnail($thumbpath,$fid,$filepath) {
                 FALSE
               );
   if (_previews_dataUriSupport()) $img = str_replace('src="/','src="',$img);
-  
+  list($fid, $pid) = explode('-', basename($thumbpath, '.jpg'));
   $attributes = array(
     'fid'    => $fid,
-    'pid'    => (int) array_pop(explode('-', array_shift(explode('.',array_pop(explode('/',$thumbpath)))))),
+    'pid'    => (int) $pid,
     'source' => file_create_url($filepath),
     'width'  => $wxh[0],
     'height' => $wxh[1],

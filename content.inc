@@ -30,7 +30,8 @@ function _previews_getcontent($node, $title=0, $useCache = true) {
 		  foreach ($files as $file) {
         $previews = _previews_getFilesFromFid($file['fid'],'thumbnails');
 		  	foreach ($previews as $filepath=>$preview) {
-          $thumbs_attr[$file['fid']][(int)array_pop(explode('-',$preview->name))] = _previews_imgGetAttr($preview,$file);
+          list($fid, $pid) = explode('-',$preview->name);
+          $thumbs_attr[$file['fid']][(int) $pid] = _previews_imgGetAttr($preview,$file);
           $thumbs[$file['fid']][]      = theme('previews_thumbnail',$filepath,$file['fid'],$file['filepath']);
 		  	}
         // in Process icon if pdf has not been converted yet
@@ -143,16 +144,15 @@ function _previews_getSetup($kind=0) {
 function _previews_imgGetAttr($file, $parentFile) {
   //drupal_set_message('<pre>'.print_r($file, 1).'</pre>');
   $attr = array();
-  $tid  = (int) array_pop  (explode('-',$file->name));
-  $fid  = (int) array_shift(explode('-',$file->name));
+  list($fid, $tid) = explode('-',$file->name);
 
   $attr['thumb_id']       = $file->name;
   $nextId                 = substr('000'.($tid+1),strlen('000'.($tid+1))-3,3);
   $attr['next_thumb_id']  = file_exists(preg_replace('|\-\d\d\d\.|','-'.$nextId.'.',$file->filename))?$fid.'-'.$nextId:0;
   $size                   = getimagesize(str_replace('/thumbnails/','/medium/',$file->filename));
   $attr['imagesize']      = array('width' => $size[0],'height' => $size[1]);
-  $attr['parent']['type'] = array_pop(explode('.',array_pop(explode('/',$parentFile['filepath']))));
-  $attr['parent']['name'] = array_pop(explode('/',$parentFile['filepath']));
+  $attr['parent']['type'] = pathinfo($parentFile['filepath'], PATHINFO_EXTENSION);
+  $attr['parent']['name'] = pathinfo($parentFile['filepath'], PATHINFO_BASENAME);
   $attr['parent']['path'] = $parentFile['filepath'];
   $attr['parent']['url']  = file_create_url($parentFile['filepath']);
   
